@@ -16,8 +16,8 @@ class NewExpense extends StatefulWidget {
 class _NewExpenseState extends State<NewExpense> {
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
-  DateTime? _selectedDate;
-  Category _selectedCategory = Category.leisure;
+  DateTime? _selectedDate = DateTime.now();
+  Category _selectedCategory = Category.other;
 
   void _presentDatePicker() async {
     final now = DateTime.now();
@@ -109,9 +109,7 @@ class _NewExpenseState extends State<NewExpense> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      _selectedDate == null
-                          ? 'No date selected'
-                          : formatter.format(_selectedDate!),
+                      formatter.format(_selectedDate!),
                     ),
                     IconButton(
                       onPressed: _presentDatePicker,
