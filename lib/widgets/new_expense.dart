@@ -1,79 +1,80 @@
-import 'package:expense_tracker/models/expense.dart' as expense_model;
-import 'package:expense_tracker/models/expense.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-class NewExpense extends StatefulWidget {
-  const NewExpense(this.addExpense, {super.key});
+import 'package:expense_tracker/models/expense.dart';
 
-  final void Function(Expense) addExpense;
+class NewExpense extends StatefulWidget {
+  const NewExpense({super.key, required this.onAddExpense});
+
+  final void Function(Expense expense) onAddExpense;
 
   @override
-  State<NewExpense> createState() => _NewExpenseState();
+  State<NewExpense> createState() {
+    return _NewExpenseState();
+  }
 }
 
 class _NewExpenseState extends State<NewExpense> {
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
-  DateTime _selectedDate = DateTime.now();
-  var _selectedCategory = expense_model.Category.other;
+  DateTime? _selectedDate;
+  Category _selectedCategory = Category.leisure;
+
+  void _presentDatePicker() async {
+    final now = DateTime.now();
+    final firstDate = DateTime(now.year - 1, now.month, now.day);
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: firstDate,
+      lastDate: now,
+    );
+    setState(() {
+      _selectedDate = pickedDate;
+    });
+  }
+
+  void _submitExpenseData() {
+    final enteredAmount = double.tryParse(_amountController
+        .text); // tryParse('Hello') => null, tryParse('1.12') => 1.12
+    final amountIsInvalid = enteredAmount == null || enteredAmount <= 0;
+    if (_titleController.text.trim().isEmpty ||
+        amountIsInvalid ||
+        _selectedDate == null) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Invalid input'),
+          content: const Text(
+              'Please make sure a valid title, amount, date and category was entered.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+              },
+              child: const Text('Okay'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    widget.onAddExpense(
+      Expense(
+        title: _titleController.text,
+        amount: enteredAmount,
+        date: _selectedDate!,
+        category: _selectedCategory,
+      ),
+    );
+    Navigator.pop(context);
+  }
 
   @override
-  dispose() {
+  void dispose() {
     _titleController.dispose();
     _amountController.dispose();
     super.dispose();
-  }
-
-  void _showDatePicker() async {
-    _selectedDate = (await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2021),
-      lastDate: DateTime.now(),
-    ))!;
-    setState(() {
-      _selectedDate = _selectedDate;
-    });
-
-    if (kDebugMode) {
-      print(_selectedDate);
-    }
-  }
-
-  void _submitData() {
-    final enteredTitle = _titleController.text;
-    final enteredAmount = double.tryParse(_amountController.text);
-    final amountIsInvalid = enteredAmount == null || enteredAmount < 0.0;
-
-    if (enteredTitle.isEmpty || amountIsInvalid) {
-      showDialog(
-          context: context,
-          builder: (ctx) {
-            return AlertDialog(
-              title: const Text("Invalid Input"),
-              content: const Text("Please enter a valid title and amount."),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                  },
-                  child: const Text("Okay"),
-                )
-              ],
-            );
-          });
-      return;
-    }
-    Expense newExpense = new Expense(
-        amount: enteredAmount,
-        title: enteredTitle,
-        date: _selectedDate,
-        category: _selectedCategory,
-        description: 'This is a new expense');
-
-    widget.addExpense(newExpense);
-    Navigator.of(context).pop();
   }
 
   @override
@@ -86,7 +87,7 @@ class _NewExpenseState extends State<NewExpense> {
             controller: _titleController,
             maxLength: 50,
             decoration: const InputDecoration(
-              labelText: "Title",
+              label: Text('Title'),
             ),
           ),
           Row(
@@ -96,70 +97,70 @@ class _NewExpenseState extends State<NewExpense> {
                   controller: _amountController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
-                    prefixText: "\$",
-                    labelText: "Amount",
+                    prefixText: '\$ ',
+                    label: Text('Amount'),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 16),
               Expanded(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(expense_model.formatter.format(_selectedDate)),
+                    Text(
+                      _selectedDate == null
+                          ? 'No date selected'
+                          : formatter.format(_selectedDate!),
+                    ),
                     IconButton(
-                      icon: const Icon(Icons.calendar_month),
-                      onPressed: () {
-                        _showDatePicker();
-                      },
-                    )
+                      onPressed: _presentDatePicker,
+                      icon: const Icon(
+                        Icons.calendar_month,
+                      ),
+                    ),
                   ],
                 ),
-              )
+              ),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               DropdownButton(
-                  value: _selectedCategory,
-                  items: expense_model.Category.values
-                      .map(
-                        (category) => DropdownMenuItem(
-                          value: category,
-                          child: Text(
-                            category.name.toUpperCase(),
-                          ),
+                value: _selectedCategory,
+                items: Category.values
+                    .map(
+                      (category) => DropdownMenuItem(
+                        value: category,
+                        child: Text(
+                          category.name.toUpperCase(),
                         ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null) return;
-
-                    setState(() {
-                      _selectedCategory = value;
-                    });
-                  }),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) {
+                    return;
+                  }
+                  setState(() {
+                    _selectedCategory = value;
+                  });
+                },
+              ),
               const Spacer(),
               TextButton(
                 onPressed: () {
                   Navigator.pop(context);
                 },
-                child: const Text("Cancel"),
+                child: const Text('Cancel'),
               ),
               ElevatedButton(
-                onPressed: () {
-                  _submitData();
-                  if (kDebugMode) {
-                    print(_titleController.text);
-                    print(_amountController.text);
-                  }
-                },
-                child: const Text("Save Expense"),
-              )
+                onPressed: _submitExpenseData,
+                child: const Text('Save Expense'),
+              ),
             ],
-          )
+          ),
         ],
       ),
     );
